@@ -8,6 +8,7 @@ terraform {
   }
 }
 
+
 # Create a VPC
 resource "aws_vpc" "season-of-samhain" {
   cidr_block = "10.0.0.0/16"
@@ -241,4 +242,9 @@ resource "aws_lb_listener" "external-elb" {
   }
 }
 
-
+resource "datadog_monitor" "cpumonitor" {
+  name    = "cpu monitor"
+  type    = "metric alert"
+  message = "CPU usage alert"
+  query   = "avg(last_1m):avg:system.cpu.system{*} by {host} > 60"
+}
