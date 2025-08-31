@@ -18,3 +18,32 @@ output "lb_ip_address" {
   value       = aws_lb.external-elb.dns_name
 }
 
+output "aws_vpc" {
+  description = "The ID of the VPC"
+  value       = aws_vpc.season-of-samhain.id
+}
+
+output "aws_subnet" {
+  description = "The ID of the subnet"
+  value       = aws_subnet.season-of-samhain.id
+}
+
+output "aws_security_group" {
+  description = "The ID of the EC2 security group"
+  value       = aws_security_group.samhain-sg.id
+}
+
+output "aws_lb_security_group" {
+  description = "The ID of the Load Balancer security group"
+  value       = aws_security_group.samhain-webserver-sg.id
+}
+
+output "grafana_security_group" {
+  description = "The ID of the Grafana security group"
+  value       = aws_security_group.grafana-sg.id
+}
+
+output "grafana_arn"{
+  description = "The ARN of the Grafana instance"
+  value       = aws_grafana_workspace.example.arn
+}
