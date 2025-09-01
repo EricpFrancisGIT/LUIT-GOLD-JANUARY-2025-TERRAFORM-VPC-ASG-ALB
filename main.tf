@@ -196,7 +196,7 @@ resource "aws_security_group" "samhain-webserver-sg" {
 }
 
 
-resource "aws_lb" "external-elb" {
+resource "aws_lb" "external-alb" {
   name               = "External-LB"
   internal           = false
   load_balancer_type = "application"
@@ -204,15 +204,15 @@ resource "aws_lb" "external-elb" {
   subnets            = [aws_subnet.Samhain-Public-SN1.id, aws_subnet.Samhain-Public-SN2.id]
 }
 
-resource "aws_lb_target_group" "external-elb" {
+resource "aws_lb_target_group" "external-alb" {
   name     = "Samhain-ALB-TG"
   port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.season-of-samhain.id
 }
 
-resource "aws_lb_target_group_attachment" "external-elb1" {
-  target_group_arn = aws_lb_target_group.external-elb.arn
+resource "aws_lb_target_group_attachment" "external-alb1" {
+  target_group_arn = aws_lb_target_group.external-alb.arn
   target_id        = aws_instance.samhainwebserver1.id
   port             = 80
 
@@ -221,8 +221,8 @@ resource "aws_lb_target_group_attachment" "external-elb1" {
   ]
 }
 
-resource "aws_lb_target_group_attachment" "external-elb2" {
-  target_group_arn = aws_lb_target_group.external-elb.arn
+resource "aws_lb_target_group_attachment" "external-alb2" {
+  target_group_arn = aws_lb_target_group.external-alb.arn
   target_id        = aws_instance.samhainwebserver2.id
   port             = 80
 
@@ -231,14 +231,52 @@ resource "aws_lb_target_group_attachment" "external-elb2" {
   ]
 }
 
-resource "aws_lb_listener" "external-elb" {
-  load_balancer_arn = aws_lb.external-elb.arn
+resource "aws_lb_listener" "external-alb" {
+  load_balancer_arn = aws_lb.external-alb.arn
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.external-elb.arn
+    target_group_arn = aws_lb_target_group.external-alb.arn
   }
 }
 
+####AutoScaling 
+data "aws_ssm_parameter" "al2023" {
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+}
+resource "aws_launch_template" "webASG" {
+  name_prefix            = "SpiritsofSamhain-lt"
+  image_id               = data.aws_ssm_parameter.al2023.value
+  instance_type          = "t2.micro"
+  user_data              = filebase64("samhain_apache.sh")
+  vpc_security_group_ids = [aws_security_group.samhain-sg.id]
+}
+resource "aws_autoscaling_group" "app" {
+  name                      = "SpiritsofSamhain-asg"
+  desired_capacity          = 5
+  min_size                  = 2
+  max_size                  = 5
+  vpc_zone_identifier       = [aws_subnet.Samhain-Public-SN1.id, aws_subnet.Samhain-Public-SN2.id]
+  health_check_type         = "ELB"
+  health_check_grace_period = 60
+  target_group_arns         = [aws_lb_target_group.external-alb.arn]
+
+  launch_template {
+    id      = aws_launch_template.webASG.id # <-- use the Terraform resource reference
+    version = "$Latest"
+  }
+}
+resource "aws_autoscaling_policy" "cpu_target" {
+  name                   = "SpiritsofSamhain-cpu-tt"
+  policy_type            = "TargetTrackingScaling"
+  autoscaling_group_name = aws_autoscaling_group.app.name
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+    target_value = 80
+  }
+}

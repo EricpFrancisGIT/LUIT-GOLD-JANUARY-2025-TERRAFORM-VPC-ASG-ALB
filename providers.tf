@@ -5,25 +5,19 @@ terraform {
       version = "~> 5.0"
     }
 
-
     grafana = {
       source  = "grafana/grafana"
       version = "4.5.3"
     }
   }
 }
-
 # Configure the AWS Provider
 provider "aws" {
   region = "us-east-1"
 }
-
-
-
 locals {
   grafana_account_id = "008923505280"
 }
-
 variable "external_id" {
   type        = string
   description = "This is your Grafana Cloud identifier and is used for security purposes."
@@ -32,7 +26,6 @@ variable "external_id" {
     error_message = "ExternalID is required."
   }
 }
-
 variable "iam_role_name" {
   type        = string
   default     = "GrafanaLabsCloudWatchIntegration"
